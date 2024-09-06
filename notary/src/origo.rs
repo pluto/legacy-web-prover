@@ -142,9 +142,15 @@ fn extract_tls_handshake(bytes: &[u8], payload: SignBody) -> Vec<Message> {
 
   let mut seq = 0;
 
-  // TODO seq < 10 is not really a solution but works
-  while cursor.position() < bytes.len() as u64 && seq < 10 {
+  loop {
+    if seq > 100 {
+      break; // prevent dos
+    }
+
     match tls_parser::parse_tls_raw_record(&cursor.get_ref()[cursor.position() as usize..]) {
+      Err(_) => {
+        break; // stop parsing if we hit an error
+      },
       Ok((_, record)) => {
         trace!("TLS record type: {}", record.hdr.record_type);
 
@@ -186,9 +192,6 @@ fn extract_tls_handshake(bytes: &[u8], payload: SignBody) -> Vec<Message> {
 
         // 5 is the record header length
         cursor.set_position(cursor.position() + 5 + record.hdr.len as u64);
-      },
-      Err(_) => {
-        // ignore
       },
     }
   }
