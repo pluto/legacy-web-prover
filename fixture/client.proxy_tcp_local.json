@@ -43,10 +43,17 @@
 					"Content-Type": "text/plain; charset=utf-8"
 				},
 				"body": {
-					"json": [
-						"hello"
-					],
-					"contains": "world"
+					"format": "json",
+					"extractors": [
+						{
+							"id": "helloValue",
+							"description": "Extract the hello value",
+							"selector": ["hello"],
+							"type": "string",
+							"required": true,
+							"predicates": []
+						}
+					]
 				}
 			}
 		}

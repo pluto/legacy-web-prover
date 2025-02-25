@@ -77,14 +77,12 @@ mod tests {
   use std::collections::HashMap;
 
   use crate::{
-    errors::ProofError,
-    program::{
-      http::{JsonKey, ManifestRequest, ManifestResponse, ManifestResponseBody, TemplateVar},
-      manifest::HTTP_1_1,
-      plain_manifest::Manifest,
-    },
+    errors::ManifestError,
+    http::{ManifestResponseBody, TemplateVar, HTTP_1_1},
+    manifest::{Manifest, ManifestRequest, ManifestResponse},
+    parser::{DataFormat, Extractor, ExtractorConfig, ExtractorType},
     request, response,
-    tests::inputs::TEST_MANIFEST,
+    test_utils::TEST_MANIFEST,
   };
 
   macro_rules! create_manifest {
@@ -108,7 +106,7 @@ mod tests {
   }
 
   #[test]
-  fn test_serialize() {
+  fn test_deserialize_from_string() {
     let manifest: Manifest = serde_json::from_str(TEST_MANIFEST).unwrap();
     // verify defaults are working
     assert_eq!(manifest.request.version, HTTP_1_1);
@@ -121,7 +119,19 @@ mod tests {
     assert_eq!(manifest.response.version, HTTP_1_1);
     assert_eq!(manifest.response.headers.len(), 2);
     assert_eq!(manifest.response.headers.get("Content-Type").unwrap(), "text/plain; charset=utf-8");
-    assert_eq!(manifest.response.body.json_path.len(), 1);
+
+    let expected_body = ManifestResponseBody(ExtractorConfig {
+      format:     DataFormat::Json,
+      extractors: vec![Extractor {
+        id:             "userInfo".to_string(),
+        description:    "Extract user information".to_string(),
+        selector:       vec!["hello".to_string()],
+        extractor_type: ExtractorType::String,
+        required:       true,
+        predicates:     vec![],
+      }],
+    });
+    assert_eq!(manifest.response.body, expected_body);
   }
 
   #[test]
@@ -163,8 +173,16 @@ mod tests {
             "Content-Length": "22"
         },
         "body": {
-            "json": [
-                "hello"
+            "format": "json",
+            "extractors": [
+                {
+                    "id": "userInfo",
+                    "description": "Extract user information",
+                    "selector": ["hello"],
+                    "type": "string",
+                    "required": true,
+                    "predicates": []
+                }
             ]
         }
     }

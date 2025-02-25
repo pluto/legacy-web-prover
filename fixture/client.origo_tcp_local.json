@@ -44,11 +44,17 @@
 					"Content-Type": "application/json"
 				},
 				"body": {
-					"json": [
-						"head",
-						"status"
-					],
-					"contains": "this_string_exists_in_body"
+					"format": "json",
+					"extractors": [
+						{
+							"id": "headStatus",
+							"description": "Extract head status information",
+							"selector": ["head", "status"],
+							"type": "string",
+							"required": true,
+							"predicates": []
+						}
+					]
 				}
 			}
 		}

@@ -12,4 +12,8 @@ pub enum ManifestError {
   /// Serde operation failed
   #[error("Serde error occurred: {0}")]
   SerdeError(#[from] serde_json::Error),
+
+  /// Extractor error
+  #[error("Extractor error: {0}")]
+  ExtractorError(#[from] crate::parser::ExtractorError),
 }
