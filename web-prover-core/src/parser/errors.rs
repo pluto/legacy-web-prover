@@ -1,9 +1,7 @@
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::parser::{
-  predicate::{Comparison, PredicateType},
-};
+use crate::parser::predicate::{Comparison, PredicateType};
 
 /// Errors that can occur during extraction operations
 #[derive(Debug, Error)]

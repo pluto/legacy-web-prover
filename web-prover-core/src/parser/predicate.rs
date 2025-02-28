@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::parser::common::get_value_type;
-use crate::parser::errors::PredicateError;
+use crate::parser::{common::get_value_type, errors::PredicateError};
 
 /// The type of predicate to apply
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Copy)]
@@ -52,7 +51,6 @@ pub enum Comparison {
   /// Some comparison (for arrays)
   Some,
 }
-
 
 /// Function to provide the default value `true` for `case_sensitive`
 fn default_case_sensitive() -> bool { true }
