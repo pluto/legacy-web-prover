@@ -32,7 +32,7 @@ jobs:
       - uses: "google-github-actions/auth@v2"
         with:
           project_id: "web-prover-staging-65d502"
-          workload_identity_provider: "projects/683425918315/locations/global/workloadIdentityPools/github/providers/web-prover-deploy-test"
+          workload_identity_provider: "projects/683425918315/locations/global/workloadIdentityPools/github/providers/pluto-legacy-web-prover"
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
