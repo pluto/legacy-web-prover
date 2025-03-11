@@ -11,7 +11,7 @@ use proofs::{
   program::data::{CircuitData, Offline, Online, SetupParams},
   E1, F, G1, G2, S1, S2,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::errors::ProxyError;
 
@@ -35,8 +35,10 @@ pub fn flatten_rom(rom: Vec<String>) -> Vec<String> {
 }
 
 pub fn initialize_verifier() -> Result<Verifier, ProxyError> {
+  info!("proving_params={:?}", PROVING_PARAMS_512);
   let bytes = std::fs::read(PROVING_PARAMS_512)?;
   let setup_data = construct_setup_data_from_fs::<{ proofs::circuits::CIRCUIT_SIZE_512 }>()?;
+  info!("setup data complete");
   let rom_data = HashMap::from([
     (String::from("PLAINTEXT_AUTHENTICATION"), CircuitData { opcode: 0 }),
     (String::from("HTTP_VERIFICATION"), CircuitData { opcode: 1 }),
