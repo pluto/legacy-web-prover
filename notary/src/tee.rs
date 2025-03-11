@@ -18,6 +18,7 @@ use tokio::{
   io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
   time::{timeout, Duration},
 };
+use serde_json::Value;
 use tokio_stream::StreamExt;
 use tokio_util::{
   codec::{Framed, LengthDelimitedCodec},
@@ -246,13 +247,13 @@ pub fn create_tee_proof(
   validate_notarization_legal(manifest, request, response)?;
 
   let value = response.notary_response_body.clone().json.unwrap();
-
+  let serialized_value = serde_json::to_string(&value).unwrap();
+  debug!("value: {:?}", value);
   let manifest_hash = manifest.to_keccak_digest()?;
-  let to_sign = VerifyOutput { value, manifest: manifest.clone() };
-  debug!("value_trgt: {:?}", value);
+  let to_sign = VerifyOutput { value: serialized_value, manifest: manifest.clone() };
   let signature = sign_verification(to_sign, State(state)).unwrap();
   let data =
-    TeeProofData { manifest_hash: manifest_hash.to_vec(), value: value_trgt.to_string() };
+    TeeProofData { manifest_hash: manifest_hash.to_vec(), value: value.to_string() };
 
   Ok(TeeProof { data, signature })
 }
