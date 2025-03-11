@@ -245,41 +245,16 @@ pub fn create_tee_proof(
 ) -> Result<TeeProof, NotaryServerError> {
   validate_notarization_legal(manifest, request, response)?;
 
+  let value = response.notary_response_body.clone().json.unwrap();
+
   let manifest_hash = manifest.to_keccak_digest()?;
-  let to_sign = VerifyOutput {
-    // Using manifest hash as a value here since we are not exposing any values extracted
-    // from the request or response
-    value:    format!("0x{}", hex::encode(manifest_hash)),
-    manifest: manifest.clone(),
-  };
-
-  // in the reddit example
-  let value_trgt = response.notary_response_body.clone().json.unwrap();
-  // this value is some json that has not been checked to see if our key is in it?
-  // for example if we are looking the key "hello", we do not know if it is there yet.
-  debug!("value_trgt: {:?}", value_trgt);
-
+  let to_sign = VerifyOutput { value, manifest: manifest.clone() };
+  debug!("value_trgt: {:?}", value);
   let signature = sign_verification(to_sign, State(state)).unwrap();
   let data =
     TeeProofData { manifest_hash: manifest_hash.to_vec(), value: value_trgt.to_string() };
 
   Ok(TeeProof { data, signature })
-}
-
-// pub struct SignedVerificationReply {
-//   pub merkle_leaves: Vec<String>, // leaves: hash(manifest), hash(value)
-//   pub digest:        String, // digest merkle root
-//   pub signature:     String,
-//   pub signature_r:   String,
-//   pub signature_s:   String,
-//   pub signature_v:   u8,
-//   pub signer:        String,
-// }
-
-struct fulldata {
-  SignedVerificationReply: bool,
-  value:                   String, /* the only real reason we need this is because the users
-                                    * needs to be able see what they are proving. */
 }
 
 /// Check if `manifest`, `request`, and `response` all fulfill requirements necessary for
