@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use axum::{
   extract::{Query, State},
-  response::Response,
+  response::{self, Response},
 };
 #[cfg(feature = "tee-google-confidential-space-token-generator")]
 use caratls_ekm_google_confidential_space_server::GoogleConfidentialSpaceTokenGenerator;
@@ -13,7 +13,8 @@ use client::origo::OrigoSecrets;
 use futures_util::SinkExt;
 use hyper::{body::Bytes, upgrade::Upgraded};
 use hyper_util::rt::TokioIo;
-use serde::Deserialize;
+use serde::{de::value, Deserialize};
+use serde_json::Value;
 use tokio::{
   io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
   time::{timeout, Duration},
@@ -245,15 +246,14 @@ pub fn create_tee_proof(
 ) -> Result<TeeProof, NotaryServerError> {
   validate_notarization_legal(manifest, request, response)?;
 
+  let value = response.notary_response_body.clone().json.unwrap();
+  let serialized_value = serde_json::to_string(&value).unwrap();
+  debug!("value: {:?}", value);
   let manifest_hash = manifest.to_keccak_digest()?;
-  let to_sign = VerifyOutput {
-    // Using manifest hash as a value here since we are not exposing any values extracted
-    // from the request or response
-    value:    format!("0x{}", hex::encode(manifest_hash)),
-    manifest: manifest.clone(),
-  };
+  let to_sign = VerifyOutput { value: serialized_value, manifest: manifest.clone() };
   let signature = sign_verification(to_sign, State(state)).unwrap();
-  let data = TeeProofData { manifest_hash: manifest_hash.to_vec() };
+  let data =
+    TeeProofData { manifest_hash: manifest_hash.to_vec(), value: value.to_string() };
 
   Ok(TeeProof { data, signature })
 }
