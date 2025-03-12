@@ -83,10 +83,7 @@ impl NotaryResponseBody {
       return None;
     };
 
-    // Use the same traversal logic but capture the result
-    let mut result = None;
-    self.traverse_json_path_with_extract(json, json_path, &mut result);
-    result
+    self.traverse_json_path_with_extract(json, json_path)
   }
 
   /// Verifies if the notary's JSON response matches the client-provided `json_path`.
@@ -108,62 +105,70 @@ impl NotaryResponseBody {
       debug!("No JSON data to match against");
       return false;
     };
-    self.traverse_json_path_with_extract(json, json_path, &mut None)
+
+    self.traverse_json_path_with_extract(json, json_path).is_some()
   }
 
   fn traverse_json_path_with_extract(
     &self,
     initial_value: &serde_json::Value,
     json_path: &[JsonKey],
-    result: &mut Option<serde_json::Value>,
-  ) -> bool {
+  ) -> Option<serde_json::Value> {
     let mut current = initial_value;
 
     for (i, key) in json_path.iter().enumerate() {
-      // If the element is last, we return true because we've reached the end of the path
       let is_last = i == json_path.len() - 1;
 
       match key {
         JsonKey::String(expected) => {
           if !self.handle_string_key(current, expected, is_last) {
-            return false;
+            return None;
           }
+
           if is_last {
-            // Capture the value when we've reached the end
             if let serde_json::Value::String(actual) = current {
               if actual == expected {
-                *result = Some(serde_json::Value::String(actual.clone()));
+                return Some(serde_json::Value::String(actual.clone()));
               }
             } else if let Some(obj) = current.as_object() {
               if obj.contains_key(expected) {
-                *result = obj.get(expected).cloned();
+                return obj.get(expected).cloned();
               }
             }
-            return true;
+            return None;
           }
-          current = current.as_object().and_then(|obj| obj.get(expected)).unwrap();
+
+          match current.as_object().and_then(|obj| obj.get(expected)) {
+            Some(value) => current = value,
+            None => return None,
+          }
         },
         JsonKey::Num(expected) => {
           if !self.handle_numeric_key(current, expected, is_last) {
-            return false;
+            return None;
           }
+
           if is_last {
-            // Capture the value when we've reached the end
-            if let serde_json::Value::Number(actual) = current {
-              *result = Some(current.clone());
+            // Return the value when we've reached the end
+            if let serde_json::Value::Number(_) = current {
+              return Some(current.clone());
             } else if let Some(arr) = current.as_array() {
               if *expected < arr.len() {
-                *result = arr.get(*expected).cloned();
+                return arr.get(*expected).cloned();
               }
             }
-            return true;
+            return None;
           }
-          current = current.as_array().and_then(|arr| arr.get(*expected)).unwrap();
+
+          match current.as_array().and_then(|arr| arr.get(*expected)) {
+            Some(value) => current = value,
+            None => return None,
+          }
         },
       }
     }
 
-    false
+    None
   }
 
   fn handle_string_key(&self, current: &serde_json::Value, expected: &str, is_last: bool) -> bool {
