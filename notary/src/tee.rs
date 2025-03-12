@@ -246,7 +246,7 @@ pub fn create_tee_proof(
 ) -> Result<TeeProof, NotaryServerError> {
   validate_notarization_legal(manifest, request, response)?;
 
-  let value = response.notary_response_body.clone().json.unwrap();
+  let value = response.extract_values(&manifest.response).unwrap();
   let serialized_value = serde_json::to_string(&value).unwrap();
   debug!("value: {:?}", value);
   let manifest_hash = manifest.to_keccak_digest()?;

@@ -73,6 +73,22 @@ impl TryFrom<&[u8]> for NotaryResponseBody {
 }
 
 impl NotaryResponseBody {
+  pub fn extract_values(&self, json_path: &[JsonKey]) -> Option<serde_json::Value> {
+    if json_path.is_empty() {
+      debug!("Invalid json_path: Path is empty");
+      return None;
+    }
+    let Some(json) = &self.json else {
+      debug!("No JSON data to extract from");
+      return None;
+    };
+
+    // Use the same traversal logic but capture the result
+    let mut result = None;
+    self.traverse_json_path_with_extract(json, json_path, &mut result);
+    result
+  }
+
   /// Verifies if the notary's JSON response matches the client-provided `json_path`.
   ///
   /// The `json_path` defines a sequence of keys for traversing the JSON structure.
@@ -92,20 +108,15 @@ impl NotaryResponseBody {
       debug!("No JSON data to match against");
       return false;
     };
-    self.traverse_json_path(json, json_path)
+    self.traverse_json_path_with_extract(json, json_path, &mut None)
   }
 
-  /// Traverses a JSON value using a specified path of keys and verifies if it matches the given
-  /// sequence.
-  ///
-  /// # Arguments
-  /// * `initial_value` - The root JSON value to start traversal from.
-  /// * `json_path` - A sequence of `JsonKey` elements defining the traversal path.
-  ///
-  /// # Returns
-  /// `true` if the traversal successfully matches the sequence or reaches the expected value;
-  /// `false` otherwise.
-  fn traverse_json_path(&self, initial_value: &serde_json::Value, json_path: &[JsonKey]) -> bool {
+  fn traverse_json_path_with_extract(
+    &self,
+    initial_value: &serde_json::Value,
+    json_path: &[JsonKey],
+    result: &mut Option<serde_json::Value>,
+  ) -> bool {
     let mut current = initial_value;
 
     for (i, key) in json_path.iter().enumerate() {
@@ -118,6 +129,16 @@ impl NotaryResponseBody {
             return false;
           }
           if is_last {
+            // Capture the value when we've reached the end
+            if let serde_json::Value::String(actual) = current {
+              if actual == expected {
+                *result = Some(serde_json::Value::String(actual.clone()));
+              }
+            } else if let Some(obj) = current.as_object() {
+              if obj.contains_key(expected) {
+                *result = obj.get(expected).cloned();
+              }
+            }
             return true;
           }
           current = current.as_object().and_then(|obj| obj.get(expected)).unwrap();
@@ -127,6 +148,14 @@ impl NotaryResponseBody {
             return false;
           }
           if is_last {
+            // Capture the value when we've reached the end
+            if let serde_json::Value::Number(actual) = current {
+              *result = Some(current.clone());
+            } else if let Some(arr) = current.as_array() {
+              if *expected < arr.len() {
+                *result = arr.get(*expected).cloned();
+              }
+            }
             return true;
           }
           current = current.as_array().and_then(|arr| arr.get(*expected)).unwrap();
@@ -256,6 +285,10 @@ impl NotaryResponse {
       }
     }
     Ok((headers, status, version, message))
+  }
+
+  pub fn extract_values(&self, other: &ManifestResponse) -> Option<serde_json::Value> {
+    self.notary_response_body.extract_values(&other.body.json_path)
   }
 
   /// Tests matching between notary response, `self`,  and client-designated response, `other`.
