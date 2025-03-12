@@ -4,7 +4,8 @@
 //! - HTTP verification: HTTP parsing and locking
 //! - JSON extraction: JSON value extraction
 
-use std::{fs, path::PathBuf};
+use std::fs;
+use tracing::info;
 
 use crate::{
   errors::ProofError,
@@ -142,9 +143,8 @@ fn wasm_witness_generator_type_512b() -> [WitnessGeneratorType; 3] {
 
 /// Loads artifact bytes from a given path relative to the workspace root
 pub fn load_artifact_bytes(path: &str) -> Result<Vec<u8>, std::io::Error> {
-  let workspace_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-  let artifact_path = workspace_path.join(path);
-  fs::read(artifact_path)
+  info!("loading artifact={:?}", path);
+  fs::read(path)
 }
 
 /// Constructs setup data
