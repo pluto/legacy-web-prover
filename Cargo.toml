@@ -23,12 +23,12 @@ serde_json="1.0.120"
 tracing           ="0.1.40"
 tracing-subscriber={ version="0.3.18", features=["env-filter"] }
 
-notary-server={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.7" }
-tlsn-verifier={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.7" }
-tlsn-prover  ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.7" }
-tlsn-common  ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.7" }
-tlsn-core    ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.7" }
-tls-client   ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.7", package="tlsn-tls-client" }
+notary-server={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.8" }
+tlsn-verifier={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.8" }
+tlsn-prover  ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.8" }
+tlsn-common  ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.8" }
+tlsn-core    ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.8" }
+tls-client   ={ git="https://github.com/tlsnotary/tlsn.git", tag="v0.1.0-alpha.8", package="tlsn-tls-client" }
 tlsn-utils   ={ git="https://github.com/tlsnotary/tlsn-utils", rev="e7b2db6" }
 
 tls-client2       ={ git="https://github.com/pluto/tls-origo-legacy", package="tls-client" }
@@ -45,7 +45,7 @@ caratls_ekm_google_confidential_space_client={ git="https://github.com/pluto/car
 # CLI
 clap={ version="4.5.13", features=["derive"] }
 # errors
-thiserror="1.0.61"
+thiserror="2.0.7"
 
 # HTTP
 hyper         ={ version="1.6", features=["full"] }

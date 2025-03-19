@@ -8,6 +8,7 @@ use spansy::{
   json::{parse, JsonValue},
   Spanned,
 };
+use hyper::header;
 pub use tlsn_core::attestation::Attestation;
 use tlsn_core::{
   presentation::Presentation, request::RequestConfig, transcript::TranscriptCommitConfig,
@@ -110,25 +111,22 @@ pub async fn notarize(
   manifest: &Manifest,
 ) -> Result<Presentation, errors::ClientErrors> {
   let mut prover = prover.start_notarize();
-  let transcript = HttpTranscript::parse(prover.transcript())?;
 
-  // Commit to the transcript.
+  let (sent_len, recv_len) = prover.transcript().len();
   let mut builder = TranscriptCommitConfig::builder(prover.transcript());
-  DefaultHttpCommitter::default().commit_transcript(&mut builder, &transcript)?;
 
-  let range_sets =
-    compute_json_mask_range_set(&transcript.responses[0], &manifest.response.body.json_path)?;
-  for range_set in range_sets.iter() {
-    builder.commit_recv(range_set)?;
-  }
+  builder.commit_sent(&(0..sent_len)).unwrap();
+  builder.commit_recv(&(0..recv_len)).unwrap();
 
-  prover.transcript_commit(builder.build()?);
+  let commit_config = builder.build().unwrap();
 
-  // Request an attestation.
-  let config = RequestConfig::default();
-  let (attestation, secrets) = prover.finalize(&config).await?;
+  prover.transcript_commit(commit_config);
 
-  let presentation = present(&Some(manifest.clone()), attestation, secrets, &range_sets).await?;
+  let request = RequestConfig::builder().build().unwrap();
+
+  let (attestation, secrets) = prover.finalize(&request).await.unwrap();
+
+  let presentation = present(&Some(manifest.clone()), attestation, secrets).await?;
   Ok(presentation)
 }
 
@@ -136,7 +134,6 @@ pub async fn present(
   manifest: &Option<Manifest>,
   attestation: Attestation,
   secrets: Secrets,
-  json_mask_range_set: &[RangeSet<usize>],
 ) -> Result<Presentation, errors::ClientErrors> {
   // get the manifest
   let manifest = match manifest {
@@ -155,29 +152,41 @@ pub async fn present(
   builder.reveal_sent(&request.without_data())?;
   // Reveal the request target.
   builder.reveal_sent(&request.request.target)?;
-  // Reveal request headers in manifetst.
+  // Reveal all headers except the values of User-Agent and Authorization.
   for header in &request.headers {
-    if manifest.request.headers.contains_key(header.name.as_str().to_ascii_lowercase().as_str()) {
+    if !(header.name.as_str().eq_ignore_ascii_case(header::USER_AGENT.as_str())
+      || header.name.as_str().eq_ignore_ascii_case(header::AUTHORIZATION.as_str()))
+    {
       builder.reveal_sent(header)?;
     } else {
       builder.reveal_sent(&header.without_value())?;
     }
   }
 
-  // Reveal the response start line and headers.
+  // Reveal only parts of the response
   let response = &transcript.responses[0];
   builder.reveal_recv(&response.without_data())?;
-  // todo: do we need to reveal target value? isn't it already done in previous line?
   for header in &response.headers {
-    if manifest.response.headers.contains_key(header.name.as_str().to_ascii_lowercase().as_str()) {
-      builder.reveal_recv(header)?;
-    } else {
-      builder.reveal_recv(&header.without_value())?;
-    }
+    builder.reveal_recv(header)?;
   }
 
-  for range_set in json_mask_range_set {
-    builder.reveal_recv(range_set)?;
+  let content = &response.body.as_ref().unwrap().content;
+  match content {
+    tlsn_formats::http::BodyContent::Json(json) => {
+      // For experimentation, reveal the entire response or just a selection
+      let reveal_all = false;
+      if reveal_all {
+        builder.reveal_recv(response)?;
+      } else {
+        builder.reveal_recv(json.get("id").unwrap())?;
+        builder.reveal_recv(json.get("information.name").unwrap())?;
+        builder.reveal_recv(json.get("meta.version").unwrap())?;
+      }
+    },
+    tlsn_formats::http::BodyContent::Unknown(span) => {
+      builder.reveal_recv(span)?;
+    },
+    _ => {},
   }
 
   let transcript_proof = builder.build()?;

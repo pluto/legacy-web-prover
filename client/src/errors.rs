@@ -74,6 +74,9 @@ pub enum ClientErrors {
   ProverConfigBuilder(#[from] tlsn_prover::ProverConfigBuilderError),
 
   #[error(transparent)]
+  TlsnFormatsError(#[from] tlsn_formats::ParseError),
+
+  #[error(transparent)]
   TranscriptProofBuilderError(#[from] tlsn_core::transcript::TranscriptProofBuilderError),
 
   #[error(transparent)]
